@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 
 __author__ = "Zich Robert (cichy)"
-__version__ = "1.7.0 / forked by theGryphon"
+__version__ = "1.7.0 / forked by thGryphn"
 
 
 def printHelp():

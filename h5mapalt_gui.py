@@ -9,8 +9,21 @@ import wx
 class MyFrame(wx.Frame):
 
     def __init__(self):
-        super().__init__(None, wx.ID_ANY, "MMH55 Mapmixer", style=wx.DEFAULT_FRAME_STYLE & ~ wx.RESIZE_BORDER)
+        super().__init__(None, wx.ID_ANY, "MMH5.5 Mapmixer", style=wx.DEFAULT_FRAME_STYLE & ~ wx.RESIZE_BORDER)
         
+        print("Refer to the ARMG Manual for a full documentation.")
+        print("")
+        print("Tips:")
+        print("")
+        print("--> 'swap for random blocks' replaces the selection above with random blocks only as opposed to fixed blocks")
+        print("")
+        print("--> to simply enable all MMH5.5 artifacts without any swapping, check all three boxes under 'artifacts'")
+        print("")
+        print("--> 'neutral ratio' changes the chances of placing neutral stacks on the map:")
+        print("    -> if negative; chance = 1 / (#Towns * (1 - NeutralRatio) + 1)")
+        print("    -> if zero;     chance = 1 / (#Towns + 1)")
+        print("    -> if positive; chance = (2 ^ NeutralRatio) / (#Towns + 2 ^ NeutralRatio)")
+        print("")
         self.mapFileEdit = None
         self.mapFileBtn = None
         self.creaChangeCheck = None
@@ -30,7 +43,7 @@ class MyFrame(wx.Frame):
         self.artRandomCheck = None
         self.enableScriptsCheck = None
         self.waterChangeCheck = None
-        self.dwellChangeCheck = None
+        self.enableHerosCheck = None
         self.gamePowerLimitCheck = None
         self.okBtn = None
         
@@ -76,6 +89,7 @@ class MyFrame(wx.Frame):
         creaHeadSizer.AddStretchSpacer(1)
         
         self.creaChangeOnlyRandomCheck = wx.CheckBox(creaBox, wx.ID_ANY, "only random blocks")
+        self.creaChangeOnlyRandomCheck.SetValue(True)
         creaHeadSizer.Add(self.creaChangeOnlyRandomCheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         
         creaSizer.Add(creaHeadSizer, 0, wx.ALL|wx.EXPAND, 5)
@@ -102,7 +116,7 @@ class MyFrame(wx.Frame):
         
         creaSizer.Add(creaGridSizer, 1, wx.EXPAND, 0)
         
-        self.creaRandomCheck = wx.CheckBox(creaBox, wx.ID_ANY, "random blocks")
+        self.creaRandomCheck = wx.CheckBox(creaBox, wx.ID_ANY, "swap for random blocks")
         self.Bind(wx.EVT_CHECKBOX, self.OnCreaRandomCheckChange, self.creaRandomCheck)
         creaSizer.Add(self.creaRandomCheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         
@@ -120,7 +134,7 @@ class MyFrame(wx.Frame):
         creaMoodSizer = wx.BoxSizer(wx.VERTICAL)
         
         self.creaMoodChangeCheck = wx.CheckBox(creaMoodBox, wx.ID_ANY, "swap")
-        self.creaMoodChangeCheck.SetValue(True)
+        self.creaMoodChangeCheck.SetValue(False)
         self.Bind(wx.EVT_CHECKBOX, self.OnCreaMoodChangeCheckChange, self.creaMoodChangeCheck)
         creaMoodSizer.Add(self.creaMoodChangeCheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         
@@ -175,6 +189,7 @@ class MyFrame(wx.Frame):
         artHeadSizer.AddStretchSpacer(1)
         
         self.artChangeOnlyRandomCheck = wx.CheckBox(artBox, wx.ID_ANY, "only random blocks")
+        self.artChangeOnlyRandomCheck.SetValue(True)
         artHeadSizer.Add(self.artChangeOnlyRandomCheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         
         artSizer.Add(artHeadSizer, 0, wx.ALL|wx.EXPAND, 5)
@@ -182,7 +197,7 @@ class MyFrame(wx.Frame):
         comp = wx.StaticLine(artBox, wx.ID_ANY)
         artSizer.Add(comp, 0, wx.ALL|wx.EXPAND, 5)
         
-        self.artRandomCheck = wx.CheckBox(artBox, wx.ID_ANY, "random blocks")
+        self.artRandomCheck = wx.CheckBox(artBox, wx.ID_ANY, "swap for random blocks")
         artSizer.Add(self.artRandomCheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         
         sizer = wx.FlexGridSizer(2)
@@ -198,7 +213,7 @@ class MyFrame(wx.Frame):
         
         # mmh55
         
-        mmh55Box = wx.StaticBox(self, wx.ID_ANY, "MMH55")
+        mmh55Box = wx.StaticBox(self, wx.ID_ANY, "scripts")
         mmh55Sizer = wx.BoxSizer(wx.VERTICAL)
         
         self.enableScriptsCheck = wx.CheckBox(mmh55Box, wx.ID_ANY, "make hotseat/LAN compatible")
@@ -219,17 +234,17 @@ class MyFrame(wx.Frame):
         otherBox = wx.StaticBox(self, wx.ID_ANY, "other")
         otherSizer = wx.BoxSizer(wx.VERTICAL)
         
+        self.enableHerosCheck = wx.CheckBox(otherBox, wx.ID_ANY, "enable all MMH5.5 heroes")
+        self.enableHerosCheck.SetValue(True)
+        self.Bind(wx.EVT_CHECKBOX, self.OnEnableHerosCheckChange, self.enableHerosCheck)
+        otherSizer.Add(self.enableHerosCheck, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
+        
         self.waterChangeCheck = wx.CheckBox(otherBox, wx.ID_ANY, "swap water objects")
         self.waterChangeCheck.SetValue(True)
         self.Bind(wx.EVT_CHECKBOX, self.OnWaterChangeCheckChange, self.waterChangeCheck)
         otherSizer.Add(self.waterChangeCheck, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
         
-        self.dwellChangeCheck = wx.CheckBox(otherBox, wx.ID_ANY, "swap dwellings")
-        self.dwellChangeCheck.SetValue(True)
-        self.Bind(wx.EVT_CHECKBOX, self.OnDwellChangeCheckChange, self.dwellChangeCheck)
-        otherSizer.Add(self.dwellChangeCheck, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
-        
-        self.gamePowerLimitCheck = wx.CheckBox(otherBox, wx.ID_ANY, "limit game power")
+        self.gamePowerLimitCheck = wx.CheckBox(otherBox, wx.ID_ANY, "disable capitols")
         self.gamePowerLimitCheck.SetValue(False)
         self.Bind(wx.EVT_CHECKBOX, self.OnGamePowerLimitCheckChange, self.gamePowerLimitCheck)
         otherSizer.Add(self.gamePowerLimitCheck, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
@@ -242,7 +257,7 @@ class MyFrame(wx.Frame):
         # other end
         
         
-        self.okBtn = wx.Button(self, wx.ID_ANY, "Ok")
+        self.okBtn = wx.Button(self, wx.ID_ANY, "OK")
         self.Bind(wx.EVT_BUTTON, self.OnOkBtnClick, self.okBtn)
         mainSizer.Add(self.okBtn, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
         
@@ -314,7 +329,7 @@ class MyFrame(wx.Frame):
     def OnWaterChangeCheckChange(self, pEvent):
         self.CheckOkButtonState()
     
-    def OnDwellChangeCheckChange(self, pEvent):
+    def OnEnableHerosCheckChange(self, pEvent):
         self.CheckOkButtonState()
     
     def OnGamePowerLimitCheckChange(self, pEvent):
@@ -323,7 +338,7 @@ class MyFrame(wx.Frame):
     def CheckOkButtonState(self):
         enableOkButton = (self.creaChangeCheck.GetValue() or self.artChangeCheck.GetValue() 
                             or self.enableScriptsCheck.GetValue() or self.waterChangeCheck.GetValue() 
-                            or self.dwellChangeCheck.GetValue() or self.gamePowerLimitCheck.GetValue())
+                            or self.enableHerosCheck.GetValue() or self.gamePowerLimitCheck.GetValue())
         self.okBtn.Enable(enableOkButton)
     
     def OnMapFileBtnClick(self, pEvent):
@@ -356,7 +371,7 @@ class MyFrame(wx.Frame):
         
         argEnableScripts = "--enableScripts=" + ("true" if self.enableScriptsCheck.GetValue() else "false")
         argWaterChange = "--waterChange=" + ("true" if self.waterChangeCheck.GetValue() else "false")
-        argDwellChange = "--dwellChange=" + ("true" if self.dwellChangeCheck.GetValue() else "false")
+        argEnableHeros = "--enableHeros=" + ("true" if self.enableHerosCheck.GetValue() else "false")
         argGamePowerLimit = "--gamePowerLimit=" + ("true" if self.gamePowerLimitCheck.GetValue() else "false")
         
         argGuiIsShown = "--guiIsShown=true"
@@ -365,11 +380,11 @@ class MyFrame(wx.Frame):
             argMapFile, argArtChange, argCreaChange, argArtChangeOnlyRandom, argArtRandom, 
             argCreaChangeOnlyRandom, argCreaRandom, argCreaPowerRatio, argCreaGroupRatio, 
             argCreaNeutralRatio, argCreaNCF, argCreaMoodChange, argCreaMoodRatio, 
-            argEnableScripts, argWaterChange, argDwellChange, argGamePowerLimit, argGuiIsShown
+            argEnableScripts, argEnableHeros, argWaterChange, argGamePowerLimit, argGuiIsShown
         ]
         try:
             mapalt.run(args)
-            wx.MessageBox("Map was changed")
+            wx.MessageBox("Map was successfully changed!")
         except mapalt.MyException as ex:
             wx.MessageBox(str(ex))
 	    
@@ -400,5 +415,3 @@ elif "--nogui" in sys.argv:
 else:
     app = MyApp()
     app.MainLoop()
-
-

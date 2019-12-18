@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 
 __author__ = "Zich Robert (cichy)"
-__version__ = "1.6.0"
+__version__ = "1.7.0 / forked by theGryphon"
 
 
 def printHelp():
@@ -39,20 +39,20 @@ Options:
     --artChange=true                To change artifacts(art).
     --creaChange=true               To change creatures(crea).
     
-    --artChangeOnlyRandom=false     To change only random art.
+    --artChangeOnlyRandom=true      To change only random art.
     --artRandom=false               To randomize art.
-    --creaChangeOnlyRandom=false    To change only random crea.
+    --creaChangeOnlyRandom=true     To change only random crea.
     --creaRandom=false              To randomize crea.
     --creaPowerRatio=1.0            Will modify crea power.
     --creaGroupRatio=0.55           Will modify chance to crea be group (1.0 == highest, but not 100%).
-    --creaMoodChange=true           To change creas mood
+    --creaMoodChange=false          To change creas mood
     --creaMoodRatio=0,3,2,1         Will modify crea mood (probably does not affect groups).
                                         - mood order: FRIENDLY,AGGRESSIVE,HOSTILE,WILD
                                         - value "1,1,0,0" would give us 50% FRIENDLY and 50% AGGRESSIVE
     --creaNeutralRatio=-2           To change chance of neutrals to be placed on map.
                                         - creaNeutralRatio == 0: chanceToPlaceOnMap = 1 / (townsCount + 1)
                                         - creaNeutralRatio < 0: chanceToPlaceOnMap = 1 / (townsCount * (creaNeutralRatio * -1 + 1) + 1)
-                                        - creaNeutralRatio > 0: chanceToPlaceOnMap = (2 ** creaNeutralRatio) / (townsCount + 2 ** creaNeutralRatio)
+                                        - creaNeutralRatio > 0: chanceToPlaceOnMap = (2 ^ creaNeutralRatio) / (townsCount + 2 ^ creaNeutralRatio)
     --creaNCF=false                 To load and work with NCF creatures.
                                         - will look for files in data folder, which names starts with "NCF"
                                         - if NFC is used, then --creaNeutralRatio=0, or higher should be set (probably)
@@ -62,12 +62,8 @@ Options:
                                         - will not disable scripts
                                         - needed by mmh55 (to work in multiplayer)
     --waterChange=true              To change some water objects
-    --dwellChange=true              To change high tier (random) dwellings(dwell)
-    --dwellRatio=4,3,1,0            To choose possible tiers(and theirs weight) of dwell
-                                        - tier order: 4,5,6,7
-                                        - value "1,1,0,0" would give us 50% T4 and 50% T5
-    --gamePowerLimit=false          To limit some game possibilities
-                                        - town: no Capiton and T5 to T7 dwellings
+    --enableHeros=true              To allow all MMH5.5 heroes
+    --gamePowerLimit=false          To disable capitol in towns
     
     --nogui                         To run console version (in gui version)
     --pathToGameFolder=../          Path to game folder.
@@ -89,7 +85,7 @@ Version: {}
 
 """
 NOTES:
-    --creaPowerRatio=1.0 is not 100% group, because if all units in group are of one creature, then it will lead to group of one unit
+    --creaGroupRatio=1.0 is not 100% group, because if all units in group are of one creature, then it will lead to group of one unit
 """
 
 # reset args func
@@ -103,11 +99,11 @@ def resetArgs():
     g["artChange"] = "true"
     g["creaChange"] = "true"
 
-    g["artChangeOnlyRandom"] = "false"
+    g["artChangeOnlyRandom"] = "true"
     g["artRandom"] = "false"
-    g["creaChangeOnlyRandom"] = "false"
+    g["creaChangeOnlyRandom"] = "true"
     g["creaRandom"] = "false"
-    g["creaMoodChange"] = "true"
+    g["creaMoodChange"] = "false"
     g["creaMoodRatio"] = "0,3,2,1"
     g["creaPowerRatio"] = "1.0"
     g["creaGroupRatio"] = "0.55"
@@ -116,8 +112,7 @@ def resetArgs():
     
     g["enableScripts"] = "true"
     g["waterChange"] = "true"
-    g["dwellChange"] = "true"
-    g["dwellRatio"] = "4,3,1,0"
+    g["enableHeros"] = "true"
     g["gamePowerLimit"] = "false"
     
     g["logArtInit"] = "false"
@@ -131,7 +126,6 @@ def resetArgs():
     # no args
     g["guiIsShown"] = False
     g["creaMoodList"] = None
-    g["dwellList"] = None
     g["dataFolder"] = None
     g["mainArchFile"] = None
 
@@ -163,8 +157,8 @@ def parseArgs(pArgs):
         "pathToGameFolder", "loadMapFromBck", "createMapBck", "artChange", 
         "creaChange", "artChangeOnlyRandom", "artRandom", "creaChangeOnlyRandom", 
         "creaMoodChange", "creaMoodRatio", "creaPowerRatio", "creaGroupRatio", 
-        "creaNeutralRatio", "creaRandom", "creaNCF", "enableScripts", 
-        "waterChange", "dwellChange", "dwellRatio", "gamePowerLimit", "logArtInit", "logArtChange", 
+        "creaNeutralRatio", "creaRandom", "creaNCF", "enableScripts", "enableHeros", 
+        "waterChange", "gamePowerLimit", "logArtInit", "logArtChange", 
         "logCreaInit", "logCreaChange", "logWaterChange", "logMapInfo", "logWarnings", 
         "guiIsShown"
     ]
@@ -205,7 +199,7 @@ def parseArgs(pArgs):
 
     g["enableScripts"] = g["enableScripts"] in trueStrList
     g["waterChange"] = g["waterChange"] in trueStrList
-    g["dwellChange"] = g["dwellChange"] in trueStrList
+    g["enableHeros"] = g["enableHeros"] in trueStrList
     g["gamePowerLimit"] = g["gamePowerLimit"] in trueStrList
     
     g["logArtInit"] = g["logArtInit"] in trueStrList
@@ -254,32 +248,6 @@ def parseArgs(pArgs):
             if len(g["creaMoodList"]) == 0:
                 printHelp()
                 Log.error("Value error!")
-    
-    # fill dwellList
-    g["dwellList"] = []
-    if dwellChange:
-        basicDwellList = [
-            "/MapObjects/Random/RandomDwelling4.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling5.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling6.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling7.xdb#xpointer(/AdvMapDwellingShared)"
-        ]
-        
-        dwellRatioParts = dwellRatio.split(",")
-        if len(dwellRatioParts) != 4:
-            printHelp()
-            Log.error("Value error!")
-        for dwellIndex, dwellRatioPart in enumerate(dwellRatioParts):
-            try:
-                dwellRatioPart = int(dwellRatioPart)
-                if dwellRatioPart > 0:
-                    for i in range(dwellRatioPart):
-                        g["dwellList"].append(basicDwellList[dwellIndex])
-            except ValueError:
-                pass
-        if len(g["dwellList"]) == 0:
-            printHelp()
-            Log.error("Value error!")
     
     
     # check map file
@@ -1128,8 +1096,19 @@ class Map:
     def changeArtifacts(self):
         if self.mTree is None:
             return
-        
+
         root = self.mTree.getroot()
+
+        # allow all artifacts
+        allowedArtifactsNode = root.find("artifactIDs")
+        if allowedArtifactsNode is None:
+            allowedArtifactsNode = ET.SubElement(root, "artifactIDs")
+        allowedArtifactsNode.clear()
+
+        if artChangeOnlyRandom and artRandom:
+            return
+
+
         items = root.find("objects")
         artifactsChanged = 0
         artifactsCount = {}
@@ -1157,11 +1136,6 @@ class Map:
                                 print("old: {}".format(oldArt.mShared))
                                 print("new: {}\n".format(newArt.mShared))
         
-        # allow all artifacts
-        allowedArtifactsNode = root.find("artifactIDs")
-        if allowedArtifactsNode is None:
-            allowedArtifactsNode = ET.SubElement(root, "artifactIDs")
-        allowedArtifactsNode.clear()
         
         print("artifacts changed: {}".format(artifactsChanged))
         
@@ -1451,101 +1425,18 @@ class Map:
                         newWaterBuildOtherCount, (newWaterBuildOtherCount / newWaterBuildCount * 100) if newWaterBuildCount > 0 else 0))
             print("")
     
-    def changeDwellings(self):
-        if self.mTree is None:
-            return
-        
-        highTierDwellsShared = [
-            "/MapObjects/Random/RandomDwelling4.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling5.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling6.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Random/RandomDwelling7.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Haven/Heaven_Military_Post.(AdvMapDwellingShared).xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Inferno/InfernoMilitaryPost.(AdvMapDwellingShared).xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Necropolis/Necropolis_Military_Post.(AdvMapDwellingShared).xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Preserve/Preserve_Military_Post.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Dungeon/Dungeon_Military_Post.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Academy/Academy_Military_Post.xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Dwarven/DwarvenDwelling04.(AdvMapDwellingShared).xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Dwarven/DwarvenDwelling04.(AdvMapDwellingShared) (2).xdb#xpointer(/AdvMapDwellingShared)",
-            "/MapObjects/Orcs/OrcishDwelling04.(AdvMapDwellingShared).xdb#xpointer(/AdvMapDwellingShared)"
-        ]
-        
-        playerTownDwellSharedList = {}
-        townDwellSharedList = {}
-        playerMap = {}
-        townMap = {}
-        dwellsChanged = 0
-        
-        townIdPrefixLen = len("#xpointer(id(")
-        townIdPostfixLen = len(")/AdvMapTown)")
-        
-        root = self.mTree.getroot()
-        allDwells = root.findall("./objects/Item[@href='#n:inline(AdvMapDwelling)']/AdvMapDwelling")
-        
-        for dwell in allDwells:
-            sharedNode = dwell.find("Shared")
-            if sharedNode is not None:
-                sharedValue = sharedNode.get("href", "")
-                if sharedValue in highTierDwellsShared:
-                    dwellsChanged += 1
-                    
-                    town = None
-                    player = None
-                    linkTownHref = dwell.find("LinkToTown").get("href", "")
-                    if len(linkTownHref) > (townIdPrefixLen + townIdPostfixLen):
-                        town = Town.getById(linkTownHref[townIdPrefixLen : len(linkTownHref) - townIdPostfixLen])
-                    
-                    if town is not None and town.hasPlayer():
-                        player = town.mPlayer
-                    else:
-                        dwellPlayer = dwell.find("PlayerID").text
-                        if dwellPlayer != "PLAYER_NONE":
-                            player = dwellPlayer
-                        """
-                        # looks like LinkToPlayer do nothing
-                        else:
-                            dwellLinkPlayer = dwell.find("LinkToPlayer").text
-                            if dwellLinkPlayer != "PLAYER_NONE":
-                                player = dwellLinkPlayer
-                        """
-                    
-                    if player is not None:
-                        # player town (link) or player (owner)
-                        # all players will have same dwellings
-                        if player not in playerMap:
-                            playerMap[player] = 0
-                        if playerMap[player] not in playerTownDwellSharedList:
-                            playerTownDwellSharedList[playerMap[player]] = rand.choice(dwellList)
-                        sharedNode.set("href", playerTownDwellSharedList[playerMap[player]])
-                        
-                        playerMap[player] += 1
-                    elif town is not None:
-                        # non player town
-                        # all non players towns will have same dwellings
-                        if town.mId not in townMap:
-                            townMap[town.mId] = 0
-                        if townMap[town.mId] not in townDwellSharedList:
-                            townDwellSharedList[townMap[town.mId]] = rand.choice(dwellList)
-                        sharedNode.set("href", townDwellSharedList[townMap[town.mId]])
-                        
-                        townMap[town.mId] += 1
-                    else:
-                        # other
-                        sharedNode.set("href", rand.choice(dwellList))
-                    
-                    dwell.find("RandomCreatures").text = "false"
-                    dwell.find("creaturesEnabled").clear()
-        
-        print("high tier dwellings changed: {}".format(dwellsChanged))
     
     def limitGamePower(self):
         buildsToSet = [
-            {"Type": "TB_TOWN_HALL", "InitialUpgrade": "BLD_UPG_1", "MaxUpgrade": "BLD_UPG_3"},
-            {"Type": "TB_DWELLING_5", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"},
-            {"Type": "TB_DWELLING_6", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"},
-            {"Type": "TB_DWELLING_7", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"}
+            {"Type": "TB_TOWN_HALL", "InitialUpgrade": "BLD_UPG_1", "MaxUpgrade": "BLD_UPG_3"}
         ]
+
+        # buildsToSet = [
+            # {"Type": "TB_TOWN_HALL", "InitialUpgrade": "BLD_UPG_1", "MaxUpgrade": "BLD_UPG_3"},
+            # {"Type": "TB_DWELLING_5", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"},
+            # {"Type": "TB_DWELLING_6", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"},
+            # {"Type": "TB_DWELLING_7", "InitialUpgrade": "BLD_UPG_NONE", "MaxUpgrade": "BLD_UPG_NONE"}
+        # ]
         
         buildsTypesToSet = []
         for build in buildsToSet:
@@ -1569,7 +1460,7 @@ class Map:
                 ET.SubElement(buildDesc, "InitialUpgrade").text = build["InitialUpgrade"]
                 ET.SubElement(buildDesc, "MaxUpgrade").text = build["MaxUpgrade"]
         
-        print("game power limited")
+        print("all capitols disabled")
     
     def enableScripts(self):
         if self.mTree is None:
@@ -1583,8 +1474,17 @@ class Map:
         
         if len(mapScriptNode.get("href", "")) == 0:
             mapScriptNode.set("href", "MapScript.xdb#xpointer(/Script)")
-            print("scripts enabled")
+            print("scripts enabled for multiplayer")
 
+    def enableHeros(self):
+        if self.mTree is None:
+            return
+        print("all MMH5.5 heroes enabled")
+        root = self.mTree.getroot()
+        allowedArtifactsNode = root.find("AvailableHeroes")
+        if allowedArtifactsNode is None:
+            allowedArtifactsNode = ET.SubElement(root, "AvailableHeroes")
+        allowedArtifactsNode.clear()
 
 # main func
 def run(pArgs=None):
@@ -1592,7 +1492,7 @@ def run(pArgs=None):
         pArgs = sys.argv[1:]
     parseArgs(pArgs)
     
-    if artChange or creaChange or enableScripts or waterChange or dwellChange:
+    if artChange or creaChange or enableScripts or waterChange or enableHeros:
         Artifact.init()
         Creature.init()
         
@@ -1607,8 +1507,8 @@ def run(pArgs=None):
             gameMap.enableScripts()
         if waterChange:
             gameMap.changeWaterObjects()
-        if dwellChange:
-            gameMap.changeDwellings()
+        if enableHeros:
+            gameMap.enableHeros()
         if gamePowerLimit:
             gameMap.limitGamePower()
         
@@ -1622,4 +1522,3 @@ if __name__ == "__main__":
     except MyException as ex:
         print(str(ex))
         sys.exit()
-

@@ -1,3 +1,12 @@
+******* 1.7.0 - 2019.12.18 (thGryphn)
+Removed dwelling remixes.
+Removed creature buildings limitations from "limit game power" option. Now it simply disables town capitols. Accordingly renamed the option.
+Added option to enable all MMH5.5 heroes.
+Changed default settings.
+Streamlined the case where all three "Artifacts" boxes are checked to enable all MMH5.5 artifacts without any swaps.
+Renamed some gui elements for clarification.
+Added tips displayed on the command window.
+
 ******* 1.6.0 - 2017.06.27
 Chance to place creatures without faction on map can be also increased (arg "creaNeutralReduction" was replaced with "creaNeutralRatio")
 Setting ReflectiveWater to true while changing water objects
